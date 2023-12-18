@@ -33,6 +33,7 @@ import com.example.myapplication.utils.ImageVectorizer
 import com.example.myapplication.utils.SocketHandler
 import com.example.myapplication.utils.WiFiDirectBroadcastReceiver
 import kotlinx.serialization.encodeToString
+import com.example.myapplication.utils.TableComparer
 import kotlinx.serialization.json.Json
 import java.io.IOException
 import java.net.InetAddress
@@ -132,6 +133,13 @@ class MainActivity : AppCompatActivity(), ImageVectorizer.ImageVectorizerListene
 
     // ImageVectorizer listener functions
     override fun onTableReady(preprocessedTable: PreprocessedTable) {
+        var pat = preprocessedTable.vectors[0].name
+        Log.d("Table",pat)
+        var lis = imageVectorizer.getImagesFromPath(pat)
+        Log.d("Table",lis.toString())
+        Log.d("Table",preprocessedTable.vectors.toString())
+        var result = TableComparer().imageSimilarity(preprocessedTable,preprocessedTable)
+        Log.d("Table",result.toString())
         this.preprocessedTable = preprocessedTable
     }
 
