@@ -21,6 +21,7 @@ import com.example.myapplication.imageProcessor.ImageInpainting
 import com.example.myapplication.imageProcessor.ObjectDetection
 import com.example.myapplication.silenceDetection.VoiceActivityDetection
 import com.example.myapplication.utils.ImageVectorizer
+import com.example.myapplication.utils.TableComparer
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
@@ -91,6 +92,13 @@ class MainActivity : AppCompatActivity(), VoiceActivityDetection.VadListener,
 
     // ImageVectorizer listener functions
     override fun onTableReady(preprocessedTable: PreprocessedTable) {
+        var pat = preprocessedTable.vectors[0].name
+        Log.d("Table",pat)
+        var lis = imageVectorizer.getImagesFromPath(pat)
+        Log.d("Table",lis.toString())
+        Log.d("Table",preprocessedTable.vectors.toString())
+        var result = TableComparer().imageSimilarity(preprocessedTable,preprocessedTable)
+        Log.d("Table",result.toString())
         this.preprocessedTable = preprocessedTable
     }
 

@@ -2,6 +2,7 @@ package com.example.myapplication.utils
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.provider.MediaStore
 import android.util.Log
@@ -46,6 +47,55 @@ class ImageVectorizer(private val context: Context, private val listener: ImageV
         }
     }
 
+    fun getImagesFromPath(path: String):Pair<Number,ArrayList<Bitmap>>{
+        val imageFile = File(path)
+
+        if (!imageFile.exists() || !imageFile.isFile) {
+            println("Invalid image file path.")
+            return Pair(0,arrayListOf<Bitmap>())
+        }
+        val time = imageFile.lastModified()/1000
+        val name = imageFile.name
+        val imageBitmapList = arrayListOf<Bitmap>()
+        var origin = 0
+
+        val projection = arrayOf(
+            MediaStore.Images.ImageColumns._ID,
+            MediaStore.Images.ImageColumns.DATE_ADDED,
+            MediaStore.Images.ImageColumns.RELATIVE_PATH,
+            MediaStore.Images.Media.DATA
+        )
+
+        val selection = "(${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? ) AND (${MediaStore.Images.ImageColumns.DATE_ADDED} BETWEEN ? AND ?) "
+        val selectionArgs = arrayOf("DCIM/PPAI%",(time-10000).toString(),(time+10000).toString())
+        val sortOrder = "${MediaStore.Images.ImageColumns.DATE_ADDED} ASC"
+
+        context.contentResolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            selectionArgs,
+            sortOrder
+        )?.use {
+            val data = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+
+
+            while (it.moveToNext()) {
+                val imageLocation = it.getString(data)
+                val imageFile = File(imageLocation)
+                if (imageFile.exists()) {
+                    if (imageFile.name == name){
+                        origin = imageBitmapList.size
+                    }
+                    val bm = BitmapFactory.decodeFile(imageLocation)
+                    Log.d(MainActivity.TAG, imageLocation)
+                    imageBitmapList.add(bm)
+
+                }
+            }
+        }
+        return Pair(origin,imageBitmapList)
+        }
     @SuppressLint("InlinedApi")
     private fun readImages(): PreprocessedTable {
         val projection = arrayOf(
@@ -67,6 +117,7 @@ class ImageVectorizer(private val context: Context, private val listener: ImageV
             sortOrder
         )?.use {
             val data = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+
             while (it.moveToNext()) {
                 val imageLocation = it.getString(data)
                 val imageFile = File(imageLocation)
