@@ -2,19 +2,15 @@ package com.example.myapplication.silenceDetection
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Color
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
-import com.example.myapplication.MainActivity
-import com.example.myapplication.imageProcessor.HumanSegmentation
 import com.konovalov.vad.silero.Vad
 import com.konovalov.vad.silero.VadSilero
 import com.konovalov.vad.silero.config.FrameSize
 import com.konovalov.vad.silero.config.Mode
 import com.konovalov.vad.silero.config.SampleRate
-import org.pytorch.Module
 import java.util.*
 import kotlin.concurrent.thread
 
