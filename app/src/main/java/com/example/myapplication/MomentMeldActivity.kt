@@ -1,14 +1,19 @@
 package com.example.myapplication
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.drawable.toDrawable
 import com.example.myapplication.classes.PreprocessedTable
 import com.example.myapplication.databinding.ActivityMomentMeldBinding
 import com.example.myapplication.silenceDetection.VoiceActivityDetection
 import com.example.myapplication.utils.SocketHandler
+import com.example.myapplication.utils.TableComparer
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -32,6 +37,11 @@ class MomentMeldActivity : AppCompatActivity(), VoiceActivityDetection.VadListen
     private lateinit var outputStream: OutputStream
 
     private val socket: Socket? = SocketHandler.socket
+    private var isListening = false
+
+    private lateinit var similarImageList: List<Pair<String, String>>
+    private var isCalculated = false
+    private var imageIdx = 0
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -109,10 +119,18 @@ class MomentMeldActivity : AppCompatActivity(), VoiceActivityDetection.VadListen
     // VAD listener functions
     override fun onSilenceDetected() {
         changeButtonColor(Color.RED)
+        outputStream = socket!!.getOutputStream()
+        outputStream.write(similarImageList[imageIdx].second.encodeToByteArray())
+        outputStream.flush()
+
+        onReceiveMessage(similarImageList[imageIdx].first)
     }
 
-    private fun onTableReady() {
+    private fun onTableReady() { // HOST only
         voiceActivityDetection.startRecording()
+
+        similarImageList = TableComparer().imageSimilarity(preprocessedTable!!, preprocessedTableReceived!!)
+        isCalculated = true
     }
 
     private fun initializeVAD() {
@@ -122,6 +140,42 @@ class MomentMeldActivity : AppCompatActivity(), VoiceActivityDetection.VadListen
     private fun changeButtonColor(color: Int) {
         runOnUiThread {
             activityMomentMeldBinding.button.setBackgroundColor(color)
+        }
+    }
+
+    private fun startListening() {
+        isListening = true
+        Thread {
+            while (isListening) {
+                try {
+                    var len: Int
+                    val buffer = ByteArray(1024)
+                    val byteArrayOutputStream = ByteArrayOutputStream()
+
+                    while (true) {
+                        len = socket?.inputStream?.read(buffer)!!
+                        val data = buffer.copyOf(len)
+                        byteArrayOutputStream.write(data)
+
+                        socket.inputStream?.available()?.let { available ->
+                            if (available == 0) {
+                                onReceiveMessage(byteArrayOutputStream.toString())
+                                byteArrayOutputStream.reset()
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }.start()
+    }
+
+    private fun onReceiveMessage(msg: String) {
+        runOnUiThread {
+            val bitmap = BitmapFactory.decodeFile(msg)
+            activityMomentMeldBinding.logger.text = msg
+            activityMomentMeldBinding.image.setImageDrawable(bitmap.toDrawable(resources))
         }
     }
 

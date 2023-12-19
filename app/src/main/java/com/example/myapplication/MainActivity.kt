@@ -7,6 +7,7 @@ import android.animation.ObjectAnimator
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.location.LocationManager
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
@@ -33,7 +34,6 @@ import com.example.myapplication.utils.ImageVectorizer
 import com.example.myapplication.utils.SocketHandler
 import com.example.myapplication.utils.WiFiDirectBroadcastReceiver
 import kotlinx.serialization.encodeToString
-import com.example.myapplication.utils.TableComparer
 import kotlinx.serialization.json.Json
 import java.io.IOException
 import java.net.InetAddress
@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity(), ImageVectorizer.ImageVectorizerListene
 
     private lateinit var imageVectorizer: ImageVectorizer
     private lateinit var preprocessedTable: PreprocessedTable
+    private var isTableReady = false
 
     private val intentFilter = IntentFilter()
     private lateinit var channel: WifiP2pManager.Channel
@@ -107,8 +108,16 @@ class MainActivity : AppCompatActivity(), ImageVectorizer.ImageVectorizerListene
         channel = manager.initialize(this, mainLooper, null)
 
         activityMainBinding.startConnect.setOnClickListener {
-            checkLocationEnabled()
-            startSearching()
+            if (isTableReady) {
+                checkLocationEnabled()
+                startSearching()
+            }
+        }
+
+        activityMainBinding.reloadTable.setOnClickListener {
+            if (isTableReady) {
+                imageVectorizer.loadTable()
+            }
         }
 
         connectionStatus = activityMainBinding.connectionStatus
@@ -133,17 +142,14 @@ class MainActivity : AppCompatActivity(), ImageVectorizer.ImageVectorizerListene
 
     // ImageVectorizer listener functions
     override fun onTableReady(preprocessedTable: PreprocessedTable) {
-        var pat = preprocessedTable.vectors[0].name
-        Log.d("Table",pat)
-        var lis = imageVectorizer.getImagesFromPath(pat)
-        Log.d("Table",lis.toString())
-        Log.d("Table",preprocessedTable.vectors.toString())
-        var result = TableComparer().imageSimilarity(preprocessedTable,preprocessedTable)
-        Log.d("Table",result.toString())
         this.preprocessedTable = preprocessedTable
+        isTableReady = true
+        activityMainBinding.startConnect.setBackgroundColor(Color.parseColor("#FF6200EE"))
     }
 
     private fun initializeImageVectorizer() {
+        isTableReady = false
+        activityMainBinding.startConnect.setBackgroundColor(Color.GRAY)
         imageVectorizer = ImageVectorizer(this, this)
     }
 

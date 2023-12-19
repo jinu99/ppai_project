@@ -96,6 +96,7 @@ class ImageVectorizer(private val context: Context, private val listener: ImageV
         }
         return Pair(origin,imageBitmapList)
         }
+
     @SuppressLint("InlinedApi")
     private fun readImages(): PreprocessedTable {
         val projection = arrayOf(
