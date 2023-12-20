@@ -1,44 +1,35 @@
 package com.example.myapplication
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import com.example.myapplication.classes.ImageVector
+import androidx.core.graphics.drawable.toDrawable
 import com.example.myapplication.classes.PreprocessedTable
 import com.example.myapplication.databinding.ActivityMainBinding
-import com.example.myapplication.imageProcessor.HumanSegmentation
-import com.example.myapplication.imageProcessor.Image2Vec
-import com.example.myapplication.imageProcessor.ImageInpainting
-import com.example.myapplication.imageProcessor.ObjectDetection
 import com.example.myapplication.silenceDetection.VoiceActivityDetection
 import com.example.myapplication.utils.ImageVectorizer
 import com.example.myapplication.utils.TableComparer
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
-import kotlinx.serialization.json.encodeToStream
-import java.io.File
 
 
 class MainActivity : AppCompatActivity(), VoiceActivityDetection.VadListener,
     ImageVectorizer.ImageVectorizerListener {
     private var _activityMainBinding: ActivityMainBinding? = null
-
+    private lateinit var sim_list: List<Pair<String, String>>
+    private var count: Int = 0
     private val activityMainBinding
         get() = _activityMainBinding!!
 
     private lateinit var voiceActivityDetection: VoiceActivityDetection
     private lateinit var imageVectorizer: ImageVectorizer
-    private lateinit var preprocessedTable: PreprocessedTable
+    private lateinit var preprocessedTableA: PreprocessedTable
+    private lateinit var preprocessedTableB: PreprocessedTable
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,13 +51,15 @@ class MainActivity : AppCompatActivity(), VoiceActivityDetection.VadListener,
         } else {
             initializeImageVectorizer()
         }
-
+//        Log.d("TESTT","CLICK")
         activityMainBinding.button.setOnClickListener {
+//            Log.d("CLICK","CLICK")
             if (voiceActivityDetection.isRecording())
                 voiceActivityDetection.stopRecording()
             else
                 voiceActivityDetection.startRecording()
         }
+
     }
 
     override fun onDestroy() {
@@ -91,15 +84,14 @@ class MainActivity : AppCompatActivity(), VoiceActivityDetection.VadListener,
     }
 
     // ImageVectorizer listener functions
-    override fun onTableReady(preprocessedTable: PreprocessedTable) {
-        var pat = preprocessedTable.vectors[0].name
-        Log.d("Table",pat)
-        var lis = imageVectorizer.getImagesFromPath(pat)
-        Log.d("Table",lis.toString())
-        Log.d("Table",preprocessedTable.vectors.toString())
-        var result = TableComparer().imageSimilarity(preprocessedTable,preprocessedTable)
-        Log.d("Table",result.toString())
-        this.preprocessedTable = preprocessedTable
+    override fun onTableReady(preprocessedTableA: PreprocessedTable,preprocessedTableB: PreprocessedTable) {
+        var pat = preprocessedTableA.vectors[0].name
+        var result = TableComparer().imageSimilarity(preprocessedTableA,preprocessedTableB)
+        Log.d("READY",result.toString())
+        this.sim_list = result
+//        Log.d("SIMMLIST",sim_list.toString())
+        this.preprocessedTableA = preprocessedTableA
+        this.preprocessedTableB = preprocessedTableB
     }
 
     private fun initializeModels() {
@@ -113,11 +105,54 @@ class MainActivity : AppCompatActivity(), VoiceActivityDetection.VadListener,
     private fun changeButtonColor(color: Int) {
         runOnUiThread {
             activityMainBinding.button.setBackgroundColor(color)
+            //and (color == Color.RED)
+            if ((!sim_list.isNullOrEmpty()) and (color == Color.RED) ) {
+//                Log.d("Count",count.toString())
+                count = count +1
+//                Log.d("SIMI1",sim_list[count].toString())
+                var images1 = imageVectorizer.getImagesFromPath(sim_list[count].first,"DCIM/UserA%")
+                var images2 = imageVectorizer.getImagesFromPath(sim_list[count].second,"DCIM/UserB%")
+                var index1 = images1.first.toInt()
+                var index2 = images2.first.toInt()
+//                Log.d("VIEW1",index1.toString())
+//                Log.d("VIEW2",index2.toString())
+//                Log.d("VIEW3",images1.second.toString())
+//                Log.d("VIEW4",images2.second.toString())
+                if (!images1.second.isNullOrEmpty() and !images2.second.isNullOrEmpty()){
+                    activityMainBinding.alpha1.setImageURI(Uri.parse("https://cdn-icons-png.flaticon.com/512/75/75519.png"))
+                    activityMainBinding.alpha3.setImageURI(Uri.parse("https://cdn-icons-png.flaticon.com/512/75/75519.png"))
+                    activityMainBinding.beta1.setImageURI(Uri.parse("https://cdn-icons-png.flaticon.com/512/75/75519.png"))
+                    activityMainBinding.beta3.setImageURI(Uri.parse("https://cdn-icons-png.flaticon.com/512/75/75519.png"))
+                    activityMainBinding.alpha2.setImageDrawable(images1.second[index1].toDrawable(resources))
+                    activityMainBinding.beta2.setImageDrawable(images2.second[index2].toDrawable(resources))
+                    if (index1 > 0){
+                        activityMainBinding.alpha1.setImageDrawable(images1.second[index1-1].toDrawable(resources))
+                    }
+                    if ((images1.second.size-1) > index1) {
+                        activityMainBinding.alpha3.setImageDrawable(images1.second[index1+1].toDrawable(resources))
+                    }
+                    if (index2 > 0){
+                        activityMainBinding.beta1.setImageDrawable(images2.second[index2-1].toDrawable(resources))
+                    }
+                    if ((images2.second.size-1) > index2) {
+                        activityMainBinding.beta3.setImageDrawable(images2.second[index2+1].toDrawable(resources))
+                    }
+                }
+
+
+
+
+            }
         }
+
+
+
+
     }
 
     companion object {
         const val TAG = "MainActivity"
-        const val PREPROCESSED_FILE_NAME = "preprocessedTable.json"
+        const val PREPROCESSED_FILE_NAME_A = "preprocessedTableA.json"
+        const val PREPROCESSED_FILE_NAME_B = "preprocessedTableB.json"
     }
 }
